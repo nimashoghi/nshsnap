@@ -194,6 +194,6 @@ def snapshot(
     **kwargs: Unpack[SnapshotConfigKwargsDict],
 ):
     if config is None:
-        config = SnapshotConfig.create(kwargs)
+        config = SnapshotConfig.from_kwargs(kwargs)
 
     return _snapshot(config)

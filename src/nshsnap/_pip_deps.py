@@ -1,11 +1,8 @@
-import datetime
 import subprocess
 from collections.abc import Mapping
 from typing import Annotated, Any, Literal, TypeAlias
 
 import nshconfig as C
-
-from ._config import SnapshotConfig
 
 
 class BasePackageDependency(C.Config):

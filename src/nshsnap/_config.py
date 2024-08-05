@@ -1,11 +1,12 @@
 import logging
-from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 import nshconfig as C
-from typing_extensions import TypedDict, assert_never
+from typing_extensions import TypedDict
 from uuid_extensions import uuid7str
 
+from ._pip_deps import EditablePackageDependency, current_pip_dependencies
 from ._util import _gitignored_dir
 
 log = logging.getLogger(__name__)
@@ -18,8 +19,13 @@ class SnapshotConfigKwargsDict(TypedDict, total=False):
     modules: list[str]
     """Modules to snapshot. Default: `[]`."""
 
+    editable_modules: bool
+    """Snapshot all editable modules. Default: `True`."""
 
-SNAPSHOT_CONFIG_DEFAULT: SnapshotConfigKwargsDict = {}
+
+SNAPSHOT_CONFIG_DEFAULT: SnapshotConfigKwargsDict = {
+    "editable_modules": True,
+}
 
 
 def _default_snapshot_dir() -> Path:
@@ -27,6 +33,13 @@ def _default_snapshot_dir() -> Path:
     snaps_folder.mkdir(parents=True, exist_ok=True)
 
     return _gitignored_dir(snaps_folder / uuid7str(), create=True)
+
+
+def _editable_modules():
+    for dep in current_pip_dependencies():
+        if not isinstance(dep, EditablePackageDependency):
+            continue
+        yield dep.name
 
 
 class SnapshotConfig(C.Config):
@@ -37,11 +50,31 @@ class SnapshotConfig(C.Config):
     """Modules to snapshot. Default: `[]`."""
 
     @classmethod
-    def create(cls, kwargs: SnapshotConfigKwargsDict):
-        match kwargs:
-            case Mapping():
-                kwargs = {**SNAPSHOT_CONFIG_DEFAULT, **kwargs}
-            case _:
-                assert_never(kwargs)
+    def from_kwargs(cls, kwargs: SnapshotConfigKwargsDict):
+        kwargs = {**SNAPSHOT_CONFIG_DEFAULT, **kwargs}
+        if kwargs.pop("editable_modules"):
+            pass
 
+        kwargs["modules"] = sorted(
+            list(set(kwargs.get("modules", [])).union(_editable_modules())),
+            key=str.casefold,
+        )
+        return cls(
+            **kwargs,  # pyright: ignore[reportCallIssue]
+        )
+
+    @classmethod
+    def from_editable_modules(
+        cls,
+        *,
+        snapshot_dir: Path | None = None,
+        additional_modules: list[str] = [],
+    ):
+        kwargs: dict[str, Any] = {}
+        if snapshot_dir is not None:
+            kwargs["snapshot_dir"] = snapshot_dir
+        kwargs["modules"] = sorted(
+            list(set(additional_modules).union(_editable_modules())),
+            key=str.casefold,
+        )
         return cls(**kwargs)
