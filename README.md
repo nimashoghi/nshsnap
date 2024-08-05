@@ -2,6 +2,20 @@
 
 nshsnap is a Python library for creating and managing snapshots of Python projects and environments. It's particularly useful for scenarios where you need to preserve the exact state of your code and dependencies, such as when running machine learning training jobs on cluster systems like SLURM.
 
+## Table of Contents <!-- omit in toc -->
+- [nshsnap](#nshsnap)
+    - [Motivation](#motivation)
+    - [Installation](#installation)
+    - [Usage](#usage)
+        - [Programmatic Usage](#programmatic-usage)
+        - [Command Line Usage](#command-line-usage)
+        - [Activating and Using Snapshots](#activating-and-using-snapshots)
+    - [Features](#features)
+    - [Requirements](#requirements)
+    - [Contributing](#contributing)
+    - [License](#license)
+
+
 ## Motivation
 
 When running long-running jobs or experiments, especially in distributed environments, it's critical to maintain consistency in your codebase. Small changes in your project files can lead to crashes or inconsistent results in ongoing runs. nshsnap addresses this issue by allowing you to take a full snapshot of your main development package, preserving the code state at that moment.
