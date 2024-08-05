@@ -19,6 +19,21 @@ def find_parent_gitignores(directory: Path) -> list[Path]:
 
 
 def should_ignore(path: str, gitignore_matchers: list[Callable[..., bool]]) -> bool:
+    # Ignore some common files
+    if path in (
+        ".gitignore",
+        ".git",
+        ".hg",
+        ".svn",
+        ".DS_Store",
+        "package-lock.json",
+        "yarn.lock",
+        "poetry.lock",
+        "Pipfile.lock",
+        "pixi.lock",
+    ):
+        return True
+
     return any(matcher(path) for matcher in gitignore_matchers)
 
 

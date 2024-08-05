@@ -10,7 +10,7 @@ from typing_extensions import Unpack
 
 from ._config import SnapshotConfig, SnapshotConfigKwargsDict
 from ._meta import SnapshotMetadata
-from ._util import _create_activation_script, _gitignored_dir
+from ._util import _gitignored_dir, create_snapshot_scripts
 
 log = logging.getLogger(__name__)
 
@@ -171,8 +171,10 @@ def _snapshot_meta(config: SnapshotConfig):
     meta = SnapshotMetadata.create(config)
     (meta_dir / "meta.json").write_text(meta.model_dump_json(indent=4))
 
-    # Create the activation script
-    _create_activation_script(config.snapshot_dir)
+    # Create the activation and execution scripts
+    script_dir = config.snapshot_dir / ".bin"
+    script_dir.mkdir(exist_ok=True)
+    create_snapshot_scripts(script_dir)
 
 
 def _snapshot(config: SnapshotConfig):

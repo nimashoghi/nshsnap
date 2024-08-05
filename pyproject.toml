@@ -35,3 +35,6 @@ ignore = ["F722", "F821", "E731", "E741"]
 
 [tool.poetry.extras]
 extra = ["pysnooper"]
+
+[tool.poetry.scripts]
+nshsnap = "nshsnap.cli:main"
