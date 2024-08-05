@@ -76,7 +76,13 @@ nshsnap --help
 
 ### Activating and Using Snapshots
 
-After creating a snapshot, you can activate it or execute commands within its environment:
+After creating a snapshot, all you need to do is prepend the snapshot directory to your `PYTHONPATH` to activate the snapshot environment:
+
+```bash
+export PYTHONPATH=/path/to/snapshot:$PYTHONPATH
+```
+
+You can also activate or execute commands within the snapshot environment using our helper scripts:
 
 ```bash
 # Activate the snapshot environment
