@@ -4,10 +4,9 @@ from typing import Any
 
 import nshconfig as C
 from typing_extensions import TypedDict
-from uuid_extensions import uuid7str
 
 from ._pip_deps import EditablePackageDependency, current_pip_dependencies
-from ._util import _gitignored_dir
+from ._util import _gitignored_dir, snapshot_id
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ def _default_snapshot_dir() -> Path:
     snaps_folder = Path.home() / ".cache" / "nshsnap" / "snapshots"
     snaps_folder.mkdir(parents=True, exist_ok=True)
 
-    return _gitignored_dir(snaps_folder / uuid7str(), create=True)
+    return _gitignored_dir(snaps_folder / snapshot_id(), create=True)
 
 
 def _editable_modules():

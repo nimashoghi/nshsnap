@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from uuid_extensions import uuid7str
+
 
 def _gitignored_dir(path: Path, *, create: bool = True) -> Path:
     if create:
@@ -70,3 +72,7 @@ def create_snapshot_scripts(script_dir: Path):
 
     # Create the execution script
     _create_execution_script(script_dir)
+
+
+def snapshot_id():
+    return uuid7str()
