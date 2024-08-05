@@ -183,6 +183,16 @@ files = [
 tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipython", "littleutils", "pytest", "rich"]
 
 [[package]]
+name = "gitignore-parser"
+version = "0.1.11"
+description = "A spec-compliant gitignore parser for Python 3.5+"
+optional = false
+python-versions = "*"
+files = [
+    {file = "gitignore_parser-0.1.11.tar.gz", hash = "sha256:fa10fde48b44888eeefac096f53bcdad9b87a4ffd7db788558dbdf71ff3bc9db"},
+]
+
+[[package]]
 name = "ipykernel"
 version = "6.29.5"
 description = "IPython Kernel for Jupyter"
@@ -1039,4 +1049,4 @@ extra = []
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "450b8c0073e6eef745b6771ae3209887382bf1ce47395dc14050bd46a1ada9d3"
+content-hash = "da5fbcfceca44690011e064361adcfe4467c305300320b38b0d7990d22d94348"

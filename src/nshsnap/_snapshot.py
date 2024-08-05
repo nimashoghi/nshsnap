@@ -10,7 +10,7 @@ from typing_extensions import Unpack
 
 from ._config import SnapshotConfig, SnapshotConfigKwargsDict
 from ._meta import SnapshotMetadata
-from ._util import _gitignored_dir
+from ._util import _create_activation_script, _gitignored_dir
 
 log = logging.getLogger(__name__)
 
@@ -65,6 +65,10 @@ class SnapshotInfo:
 
     modules: list[str]
     """The modules that were snapshot."""
+
+    @property
+    def metadata_dir(self) -> Path:
+        return self.snapshot_dir / ".nshsnapmeta"
 
 
 def _snapshot_modules(snapshot_dir: Path, modules: list[str]):
@@ -144,7 +148,7 @@ def _ensure_supported():
 
 
 def _snapshot_meta(config: SnapshotConfig):
-    meta_dir = config.snapshot_dir / "nshsnapmeta"
+    meta_dir = config.snapshot_dir / ".nshsnapmeta"
     meta_dir.mkdir(exist_ok=True)
 
     # Save the config
@@ -166,6 +170,9 @@ def _snapshot_meta(config: SnapshotConfig):
     # Save the metadata
     meta = SnapshotMetadata.create(config)
     (meta_dir / "meta.json").write_text(meta.model_dump_json(indent=4))
+
+    # Create the activation script
+    _create_activation_script(config.snapshot_dir)
 
 
 def _snapshot(config: SnapshotConfig):
