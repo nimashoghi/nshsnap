@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nshsnap"
-version = "0.0.1"
+version = "0.1.0"
 description = ""
 authors = ["Nima Shoghi <nimashoghi@gmail.com>"]
 readme = "README.md"
@@ -34,7 +34,7 @@ reportPrivateImportUsage = false
 ignore = ["F722", "F821", "E731", "E741"]
 
 [tool.poetry.extras]
-extra = ["pysnooper"]
+extra = []
 
 [tool.poetry.scripts]
 nshsnap = "nshsnap.cli:main"
