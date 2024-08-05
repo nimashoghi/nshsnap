@@ -1,9 +1,12 @@
 [tool.poetry]
 name = "nshsnap"
-version = "0.2.0"
+version = "0.3.1"
 description = ""
 authors = ["Nima Shoghi <nimashoghi@gmail.com>"]
 readme = "README.md"
+
+[tool.poetry.urls]
+homepage = "https://github.com/nimashoghi/nshsnap"
 
 [tool.poetry.dependencies]
 python = "^3.10"
