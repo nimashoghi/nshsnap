@@ -8,8 +8,8 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 nshconfig = "*"
-
 uuid7 = "*"
+
 [tool.poetry.group.dev.dependencies]
 pyright = "^1.1.373"
 ruff = "^0.5.4"

@@ -1,3 +1,4 @@
+import datetime
 import importlib.util
 import logging
 import subprocess
@@ -9,6 +10,7 @@ from typing import overload
 from typing_extensions import Unpack
 
 from ._config import SnapshotConfig, SnapshotConfigKwargsDict
+from ._meta import SnapshotMetadata
 
 log = logging.getLogger(__name__)
 
@@ -141,15 +143,22 @@ def _ensure_supported():
         )
 
 
+def _snapshot_meta(config: SnapshotConfig):
+    meta = SnapshotMetadata(
+        config=config,
+        modules=config.modules,
+        snapshot_dir=config.snapshot_save_dir,
+        timestamp=datetime.datetime.now(),
+    )
+    (config.snapshot_save_dir / "nshsnapmeta.json").write_text(
+        meta.model_dump_json(indent=4)
+    )
+
+
 def _snapshot(config: SnapshotConfig):
     _ensure_supported()
 
-    # Add a .nshsnapconfig file to the directory
-    # with the JSON-serialized config
-    (config.snapshot_save_dir / ".nshsnapconfig").write_text(
-        config.model_dump_json(indent=2)
-    )
-
+    _snapshot_meta(config)
     return _snapshot_modules(config.snapshot_save_dir, config.modules)
 
 

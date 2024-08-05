@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TypeAlias
 
 import nshconfig as C
 from typing_extensions import TypedDict, assert_never, override
@@ -50,6 +49,9 @@ class SnapshotConfig(C.Config):
     editable_modules: bool = True
     """Whether to include all editable modules. Default: `True`."""
 
+    id: str = C.Field(default_factory=uuid7str)
+    """The unique identifier for the snapshot."""
+
     snapshot_save_dir: C.AllowMissing[Path] = C.MISSING
     """The directory where the snapshot is saved.
     If not provided, a new directory is created under `base_dir`."""
@@ -59,9 +61,8 @@ class SnapshotConfig(C.Config):
         super().__post_init__()
 
         if self.snapshot_save_dir is C.MISSING:
-            dir_ = _gitignored_dir(
-                _gitignored_dir(self.base_dir / "snapshots") / uuid7str()
-            )
+            dir_ = _gitignored_dir(self.base_dir / "snapshots", create=True) / self.id
+            dir_.mkdir()
             log.critical(f"Resolved snapshot dir: {dir_}")
             self.snapshot_save_dir = dir_
 
