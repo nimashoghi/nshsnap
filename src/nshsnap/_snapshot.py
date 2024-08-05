@@ -1,4 +1,3 @@
-import datetime
 import importlib.util
 import logging
 import subprocess
@@ -159,13 +158,13 @@ def _snapshot_meta(config: SnapshotConfig):
             stdout=subprocess.PIPE,
             text=True,
         ).stdout
-        (meta_dir / "pip_freeze.txt").write_text(pip_freeze)
+        (meta_dir / "requirements.txt").write_text(pip_freeze)
     except BaseException as e:
         log.warning(f"Failed to dump pip environment: {e}")
         pip_freeze = None
 
     # Save the metadata
-    meta = SnapshotMetadata.create(config, pip_freeze)
+    meta = SnapshotMetadata.create(config)
     (meta_dir / "meta.json").write_text(meta.model_dump_json(indent=4))
 
 
@@ -173,7 +172,6 @@ def _snapshot(config: SnapshotConfig):
     _ensure_supported()
 
     _gitignored_dir(config.snapshot_dir)
-
     _snapshot_meta(config)
     return _snapshot_modules(config.snapshot_dir, config.modules)
 
