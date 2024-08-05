@@ -11,6 +11,7 @@ from typing_extensions import Unpack
 
 from ._config import SnapshotConfig, SnapshotConfigKwargsDict
 from ._meta import SnapshotMetadata
+from ._util import _gitignored_dir
 
 log = logging.getLogger(__name__)
 
@@ -144,22 +145,37 @@ def _ensure_supported():
 
 
 def _snapshot_meta(config: SnapshotConfig):
-    meta = SnapshotMetadata(
-        config=config,
-        modules=config.modules,
-        snapshot_dir=config.snapshot_save_dir,
-        timestamp=datetime.datetime.now(),
-    )
-    (config.snapshot_save_dir / "nshsnapmeta.json").write_text(
-        meta.model_dump_json(indent=4)
-    )
+    meta_dir = config.snapshot_dir / "nshsnapmeta"
+    meta_dir.mkdir(exist_ok=True)
+
+    # Save the config
+    (meta_dir / "config.json").write_text(config.model_dump_json(indent=4))
+
+    # Dump the current pip environment and save it
+    try:
+        pip_freeze = subprocess.run(
+            ["pip", "freeze", "--local"],
+            check=True,
+            stdout=subprocess.PIPE,
+            text=True,
+        ).stdout
+        (meta_dir / "pip_freeze.txt").write_text(pip_freeze)
+    except BaseException as e:
+        log.warning(f"Failed to dump pip environment: {e}")
+        pip_freeze = None
+
+    # Save the metadata
+    meta = SnapshotMetadata.create(config, pip_freeze)
+    (meta_dir / "meta.json").write_text(meta.model_dump_json(indent=4))
 
 
 def _snapshot(config: SnapshotConfig):
     _ensure_supported()
 
+    _gitignored_dir(config.snapshot_dir)
+
     _snapshot_meta(config)
-    return _snapshot_modules(config.snapshot_save_dir, config.modules)
+    return _snapshot_modules(config.snapshot_dir, config.modules)
 
 
 @overload

@@ -35,36 +35,11 @@ SNAPSHOT_CONFIG_DEFAULT: SnapshotConfigKwargsDict = {
 
 
 class SnapshotConfig(C.Config):
-    base_dir: Path = C.Field(
-        default_factory=lambda: _gitignored_dir(
-            Path.home() / ".cache" / "nshsnap",
-            create=True,
-        )
-    )
+    snapshot_dir: Path
     """The directory to save snapshots to."""
 
     modules: list[str] = []
     """Modules to snapshot. Default: `[]`."""
-
-    editable_modules: bool = True
-    """Whether to include all editable modules. Default: `True`."""
-
-    id: str = C.Field(default_factory=uuid7str)
-    """The unique identifier for the snapshot."""
-
-    snapshot_save_dir: C.AllowMissing[Path] = C.MISSING
-    """The directory where the snapshot is saved.
-    If not provided, a new directory is created under `base_dir`."""
-
-    @override
-    def __post_init__(self):
-        super().__post_init__()
-
-        if self.snapshot_save_dir is C.MISSING:
-            dir_ = _gitignored_dir(self.base_dir / "snapshots", create=True) / self.id
-            dir_.mkdir()
-            log.critical(f"Resolved snapshot dir: {dir_}")
-            self.snapshot_save_dir = dir_
 
     @classmethod
     def create(cls, kwargs: SnapshotConfigKwargsDict):
