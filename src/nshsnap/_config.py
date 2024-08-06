@@ -156,15 +156,10 @@ class SnapshotConfig(C.Config):
         deep: Literal["deep", "deep-builtin", "shallow"] = "deep-builtin",
         ignore_builtin: bool = True,
     ):
+        resolved_modules = _resolve_parent_modules(args, ignore_builtin, deep)
+        log.critical(
+            f"Resolved the following modules from the provided values: {resolved_modules}"
+        )
         return self.model_copy(
-            update={
-                "modules": _merge_modules(
-                    self.modules,
-                    _resolve_parent_modules(
-                        args,
-                        ignore_builtin=ignore_builtin,
-                        deep=deep,
-                    ),
-                )
-            }
+            update={"modules": _merge_modules(self.modules, resolved_modules)}
         )
