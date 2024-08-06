@@ -1,14 +1,27 @@
 import logging
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, overload
 
 import nshconfig as C
-from typing_extensions import TypedDict, assert_never
+from typing_extensions import Self, TypedDict, Unpack, assert_never
 
 from ._pip_deps import EditablePackageDependency, current_pip_dependencies
+from ._resolve_modules import _resolve_parent_modules
 from ._util import _gitignored_dir, snapshot_id
 
 log = logging.getLogger(__name__)
+
+
+class SnapshotResolveModulesConfigKwargsDict(TypedDict, total=False):
+    values: Iterable[Any]
+    """Values to resolve modules from."""
+
+    deep: Literal["deep", "deep-builtin", "shallow"]
+    """How deep to resolve modules. Default: `"deep-builtin"`."""
+
+    ignore_builtin: bool
+    """Whether to ignore builtin modules when resolving modules. Default: `True`."""
 
 
 class SnapshotConfigKwargsDict(TypedDict, total=False):
@@ -23,6 +36,9 @@ class SnapshotConfigKwargsDict(TypedDict, total=False):
 
     on_module_not_found: Literal["raise", "warn"]
     """What to do when a module is not found. Default: `"warn"`."""
+
+    resolve_modules: SnapshotResolveModulesConfigKwargsDict
+    """Configuration for resolving modules."""
 
 
 SNAPSHOT_CONFIG_DEFAULT: SnapshotConfigKwargsDict = {
@@ -62,6 +78,17 @@ def _editable_modules(on_module_not_found: Literal["raise", "warn"]):
         yield module_name
 
 
+def _merge_modules(*args: Iterable[str]):
+    # Merge all modules into a single set
+    all_modules = set[str]()
+
+    for modules in args:
+        all_modules.update(modules)
+
+    # Sort alphabetically
+    return sorted(all_modules)
+
+
 class SnapshotConfig(C.Config):
     snapshot_dir: Path = C.Field(default_factory=_default_snapshot_dir)
     """The directory to save snapshots to."""
@@ -73,35 +100,71 @@ class SnapshotConfig(C.Config):
     """What to do when a module is not found. Default: `"warn"`."""
 
     @classmethod
-    def from_kwargs(cls, kwargs: SnapshotConfigKwargsDict):
-        kwargs = {**SNAPSHOT_CONFIG_DEFAULT, **kwargs}
-        if kwargs.pop("editable_modules"):
-            kwargs["modules"] = sorted(
-                list(
-                    set(kwargs.get("modules", [])).union(
-                        _editable_modules(kwargs.get("on_module_not_found", "warn"))
-                    )
-                ),
-                key=str.casefold,
-            )
-
-        return cls(
-            **kwargs,  # pyright: ignore[reportCallIssue]
-        )
+    @overload
+    def from_kwargs(cls, kwargs: SnapshotConfigKwargsDict, /) -> Self: ...
 
     @classmethod
-    def from_editable_modules(
+    @overload
+    def from_kwargs(cls, /, **kwargs: Unpack[SnapshotConfigKwargsDict]) -> Self: ...
+
+    @classmethod
+    def from_kwargs(
         cls,
-        *,
-        snapshot_dir: Path | None = None,
-        additional_modules: list[str] = [],
-        on_module_not_found: Literal["raise", "warn"] = "warn",
+        arg_pos: SnapshotConfigKwargsDict | None = None,
+        /,
+        **kwargs: Unpack[SnapshotConfigKwargsDict],
     ):
-        kwargs: dict[str, Any] = {}
-        if snapshot_dir is not None:
-            kwargs["snapshot_dir"] = snapshot_dir
-        kwargs["modules"] = sorted(
-            list(set(additional_modules).union(_editable_modules(on_module_not_found))),
-            key=str.casefold,
+        kwargs = {
+            **SNAPSHOT_CONFIG_DEFAULT,
+            **(arg_pos or {}),
+            **kwargs,
+        }
+        editable_modules = bool(kwargs.pop("editable_modules"))
+        resolve_modules = kwargs.pop("resolve_modules", {})
+
+        instance = cls(**kwargs)  # pyright: ignore[reportCallIssue]
+
+        if editable_modules:
+            instance = instance.with_editable_modules()
+
+        if resolve_modules and (values := resolve_modules.get("values")) is not None:
+            instance = instance.with_resolved_modules(
+                *values,
+                deep=resolve_modules.get("deep", "deep-builtin"),
+                ignore_builtin=resolve_modules.get("ignore_builtin", True),
+            )
+
+        return instance
+
+    def with_editable_modules(
+        self,
+        on_module_not_found: Literal["raise", "warn"] | None = None,
+    ):
+        if on_module_not_found is None:
+            on_module_not_found = self.on_module_not_found
+        return self.model_copy(
+            update={
+                "modules": _merge_modules(
+                    self.modules, _editable_modules(self.on_module_not_found)
+                )
+            }
         )
-        return cls(**kwargs)
+
+    def with_resolved_modules(
+        self,
+        *args: Any,
+        deep: Literal["deep", "deep-builtin", "shallow"] = "deep-builtin",
+        ignore_builtin: bool = True,
+    ):
+        return self.model_copy(
+            update={
+                "modules": _merge_modules(
+                    self.modules,
+                    _resolve_parent_modules(
+                        args,
+                        ignore_builtin=ignore_builtin,
+                        deep=deep,
+                    ),
+                )
+            }
+        )
