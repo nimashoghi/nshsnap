@@ -16,13 +16,13 @@ def _gitignored_dir(path: Path, *, create: bool = True) -> Path:
     return path
 
 
-def _create_activation_script(script_dir: Path):
+def _create_activation_script(snapshot_dir: Path, script_dir: Path):
     activate_script = script_dir / "activate"
     script_content = f"""
 #!/bin/bash
 
 # Add the snapshot directory to PYTHONPATH
-export PYTHONPATH="{script_dir}:$PYTHONPATH"
+export PYTHONPATH="{snapshot_dir}:$PYTHONPATH"
 
 # Optionally, you can modify the PS1 to indicate that the snapshot is active
 export OLD_PS1="$PS1"
@@ -30,7 +30,7 @@ export PS1="(snapshot) $PS1"
 
 deactivate() {{
     # Restore the old PYTHONPATH
-    export PYTHONPATH="${{PYTHONPATH#{script_dir}:}}"
+    export PYTHONPATH="${{PYTHONPATH#{snapshot_dir}:}}"
 
     # Restore the old PS1
     export PS1="$OLD_PS1"
@@ -46,7 +46,7 @@ echo "Snapshot environment activated. Use 'deactivate' to exit."
     activate_script.chmod(0o755)  # Make the script executable
 
 
-def _create_execution_script(script_dir: Path):
+def _create_execution_script(snapshot_dir: Path, script_dir: Path):
     execute_script = script_dir / "execute"
     script_content = f"""
 #!/bin/bash
@@ -57,7 +57,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 # Add the snapshot directory to PYTHONPATH
-export PYTHONPATH="{script_dir}:$PYTHONPATH"
+export PYTHONPATH="{snapshot_dir}:$PYTHONPATH"
 
 # Execute the given command
 exec "$@"
@@ -66,12 +66,12 @@ exec "$@"
     execute_script.chmod(0o755)  # Make the script executable
 
 
-def create_snapshot_scripts(script_dir: Path):
+def create_snapshot_scripts(snapshot_dir: Path, script_dir: Path):
     # Create the activation script
-    _create_activation_script(script_dir)
+    _create_activation_script(snapshot_dir, script_dir)
 
     # Create the execution script
-    _create_execution_script(script_dir)
+    _create_execution_script(snapshot_dir, script_dir)
 
 
 def snapshot_id():

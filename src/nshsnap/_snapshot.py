@@ -174,7 +174,7 @@ def _snapshot_meta(config: SnapshotConfig):
     # Create the activation and execution scripts
     script_dir = config.snapshot_dir / ".bin"
     script_dir.mkdir(exist_ok=True)
-    create_snapshot_scripts(script_dir)
+    create_snapshot_scripts(config.snapshot_dir, script_dir)
 
 
 def _snapshot(config: SnapshotConfig):
