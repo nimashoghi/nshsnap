@@ -38,7 +38,15 @@ def _editable_modules():
     for dep in current_pip_dependencies():
         if not isinstance(dep, EditablePackageDependency):
             continue
-        yield dep.name
+
+        if (module_name := dep.importable_module_name()) is None:
+            raise ValueError(
+                f"Could not find an importable module name for editable package {dep.name}. "
+                "Please double-check to make sure that the package is installed correctly. "
+                "Delete any existing *.egg-info directories in the package's source directory, "
+                "pip uninstall the package, and then reinstall it."
+            )
+        yield module_name
 
 
 class SnapshotConfig(C.Config):
