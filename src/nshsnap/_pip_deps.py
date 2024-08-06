@@ -27,8 +27,7 @@ class EditablePackageDependency(BasePackageDependency):
         """
         try:
             dist = importlib.metadata.distribution(self.name)
-            top_level = dist.read_text("top_level.txt")
-            if top_level:
+            if top_level := dist.read_text("top_level.txt"):
                 return top_level.strip().split("\n")[0]
         except importlib.metadata.PackageNotFoundError:
             pass
@@ -41,11 +40,10 @@ class EditablePackageDependency(BasePackageDependency):
             self.name.lower().replace("-", "_"),
         ]
 
-        for name in potential_names:
-            if importlib.util.find_spec(name):
-                return name
-
-        return None
+        return next(
+            (name for name in potential_names if importlib.util.find_spec(name)),
+            None,
+        )
 
 
 def _discriminator(value: Any):

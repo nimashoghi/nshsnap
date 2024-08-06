@@ -4,9 +4,9 @@ import subprocess
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import overload
+from typing import Literal, overload
 
-from typing_extensions import Unpack
+from typing_extensions import Unpack, assert_never
 
 from ._config import SnapshotConfig, SnapshotConfigKwargsDict
 from ._meta import SnapshotMetadata
@@ -71,7 +71,11 @@ class SnapshotInfo:
         return self.snapshot_dir / ".nshsnapmeta"
 
 
-def _snapshot_modules(snapshot_dir: Path, modules: list[str]):
+def _snapshot_modules(
+    snapshot_dir: Path,
+    modules: list[str],
+    on_module_not_found: Literal["raise", "warn"],
+):
     """
     Snapshot the specified modules to the given directory.
 
@@ -89,10 +93,16 @@ def _snapshot_modules(snapshot_dir: Path, modules: list[str]):
 
     moved_modules = defaultdict[str, list[tuple[Path, Path]]](list)
     for module in modules:
-        spec = importlib.util.find_spec(module)
-        if spec is None:
-            log.warning(f"Module {module} not found")
-            continue
+        if (spec := importlib.util.find_spec(module)) is None:
+            msg = f"Module {module} not found"
+            match on_module_not_found:
+                case "raise":
+                    raise ValueError(msg)
+                case "warn":
+                    log.warning(msg)
+                    continue
+                case _:
+                    assert_never(on_module_not_found)
 
         assert (
             spec.submodule_search_locations
@@ -182,7 +192,11 @@ def _snapshot(config: SnapshotConfig):
 
     _gitignored_dir(config.snapshot_dir)
     _snapshot_meta(config)
-    return _snapshot_modules(config.snapshot_dir, config.modules)
+    return _snapshot_modules(
+        config.snapshot_dir,
+        config.modules,
+        config.on_module_not_found,
+    )
 
 
 @overload
