@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ._config import SnapshotConfig as SnapshotConfig
 from ._config import SnapshotConfigKwargsDict as SnapshotConfigKwargsDict
 from ._load import load_existing_snapshot as load_existing_snapshot
