@@ -4,7 +4,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from ._config import SnapshotConfig, SnapshotConfigKwargsDict
+from ._config import SnapshotConfig
 from ._snapshot import snapshot
 
 
@@ -30,17 +30,17 @@ def main():
     )
     args = parser.parse_args()
 
-    config_kwargs: SnapshotConfigKwargsDict = {}
-    config_kwargs["editable_modules"] = args.editables
+    config = SnapshotConfig.draft()
+    config.editable_modules = args.editables
     if args.modules:
-        config_kwargs["modules"] = args.modules
-    elif not config_kwargs.get("editable_modules"):
+        config.modules = args.modules
+    elif not config.editable_modules:
         parser.error("At least one of --modules or --editables must be provided")
 
     if args.dir:
-        config_kwargs["snapshot_dir"] = args.dir
+        config.snapshot_dir = args.dir
 
-    config = SnapshotConfig.from_kwargs(config_kwargs)
+    config = config.finalize()
     snapshot_info = snapshot(config)
 
     print(f"Snapshot created at: {snapshot_info.snapshot_dir}")

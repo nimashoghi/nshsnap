@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import copy
 import logging
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Literal, overload
+from typing import Any, Literal
 
 import nshconfig as C
-from typing_extensions import Self, TypedDict, Unpack, assert_never
+from typing_extensions import TypedDict, assert_never
 
 from ._pip_deps import EditablePackageDependency, current_pip_dependencies
-from ._resolve_modules import _resolve_parent_modules
 from ._util import _gitignored_dir, snapshot_id
 
 log = logging.getLogger(__name__)
@@ -24,29 +24,6 @@ class SnapshotResolveModulesConfigKwargsDict(TypedDict, total=False):
 
     ignore_builtin: bool
     """Whether to ignore builtin modules when resolving modules. Default: `True`."""
-
-
-class SnapshotConfigKwargsDict(TypedDict, total=False):
-    snapshot_dir: Path
-    """The directory to save snapshots to."""
-
-    modules: list[str]
-    """Modules to snapshot. Default: `[]`."""
-
-    editable_modules: bool
-    """Snapshot all editable modules. Default: `False`."""
-
-    on_module_not_found: Literal["raise", "warn"]
-    """What to do when a module is not found. Default: `"warn"`."""
-
-    resolve_modules: SnapshotResolveModulesConfigKwargsDict
-    """Configuration for resolving modules."""
-
-
-SNAPSHOT_CONFIG_DEFAULT: SnapshotConfigKwargsDict = {
-    "editable_modules": False,
-    "on_module_not_found": "warn",
-}
 
 
 def _default_snapshot_dir() -> Path:
@@ -101,67 +78,14 @@ class SnapshotConfig(C.Config):
     on_module_not_found: Literal["raise", "warn"] = "warn"
     """What to do when a module is not found. Default: `"warn"`."""
 
-    @classmethod
-    @overload
-    def from_kwargs(cls, kwargs: SnapshotConfigKwargsDict, /) -> Self: ...
+    editable_modules: bool = False
+    """Snapshot all editable modules. Default: `False`."""
 
-    @classmethod
-    @overload
-    def from_kwargs(cls, /, **kwargs: Unpack[SnapshotConfigKwargsDict]) -> Self: ...
-
-    @classmethod
-    def from_kwargs(
-        cls,
-        arg_pos: SnapshotConfigKwargsDict | None = None,
-        /,
-        **kwargs: Unpack[SnapshotConfigKwargsDict],
-    ):
-        kwargs = {
-            **SNAPSHOT_CONFIG_DEFAULT,
-            **(arg_pos or {}),
-            **kwargs,
-        }
-        editable_modules = bool(kwargs.pop("editable_modules"))
-        resolve_modules = kwargs.pop("resolve_modules", {})
-
-        instance = cls(**kwargs)  # pyright: ignore[reportCallIssue]
-
-        if editable_modules:
-            instance = instance.with_editable_modules()
-
-        if resolve_modules and (values := resolve_modules.get("values")) is not None:
-            instance = instance.with_resolved_modules(
-                *values,
-                deep=resolve_modules.get("deep", "deep-builtin"),
-                ignore_builtin=resolve_modules.get("ignore_builtin", True),
+    def _resolve_modules(self):
+        modules = copy.deepcopy(self.modules)
+        if self.editable_modules:
+            modules = _merge_modules(
+                modules, _editable_modules(self.on_module_not_found)
             )
 
-        return instance
-
-    def with_editable_modules(
-        self,
-        on_module_not_found: Literal["raise", "warn"] | None = None,
-    ):
-        if on_module_not_found is None:
-            on_module_not_found = self.on_module_not_found
-        return self.model_copy(
-            update={
-                "modules": _merge_modules(
-                    self.modules, _editable_modules(self.on_module_not_found)
-                )
-            }
-        )
-
-    def with_resolved_modules(
-        self,
-        *args: Any,
-        deep: Literal["deep", "deep-builtin", "shallow"] = "deep-builtin",
-        ignore_builtin: bool = True,
-    ):
-        resolved_modules = _resolve_parent_modules(args, ignore_builtin, deep)
-        log.critical(
-            f"Resolved the following modules from the provided values: {resolved_modules}"
-        )
-        return self.model_copy(
-            update={"modules": _merge_modules(self.modules, resolved_modules)}
-        )
+        return modules

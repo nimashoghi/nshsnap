@@ -6,11 +6,12 @@ import subprocess
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, overload
+from typing import Literal
 
-from typing_extensions import Unpack, assert_never
+from typing_extensions import assert_never
 
-from ._config import SnapshotConfig, SnapshotConfigKwargsDict
+from . import configs
+from ._config import SnapshotConfig
 from ._meta import SnapshotMetadata
 from ._util import _gitignored_dir, create_snapshot_scripts
 
@@ -196,29 +197,14 @@ def _snapshot(config: SnapshotConfig):
     _snapshot_meta(config)
     return _snapshot_modules(
         config.snapshot_dir,
-        config.modules,
+        config._resolve_modules(),
         config.on_module_not_found,
     )
 
 
-@overload
-def snapshot() -> SnapshotInfo: ...
-
-
-@overload
-def snapshot(config: SnapshotConfig, /) -> SnapshotInfo: ...
-
-
-@overload
-def snapshot(**kwargs: Unpack[SnapshotConfigKwargsDict]) -> SnapshotInfo: ...
-
-
-def snapshot(
-    config: SnapshotConfig | None = None,
-    /,
-    **kwargs: Unpack[SnapshotConfigKwargsDict],
-):
+def snapshot(config: configs.SnapshotConfigInstanceOrDict | None = None, /):
     if config is None:
-        config = SnapshotConfig.from_kwargs(kwargs)
+        config = SnapshotConfig()
 
+    config = configs.CreateSnapshotConfig(config)
     return _snapshot(config)
