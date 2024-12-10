@@ -6,14 +6,16 @@ import subprocess
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from typing_extensions import assert_never
 
-from . import configs
 from ._config import SnapshotConfig
 from ._meta import SnapshotMetadata
 from ._util import _gitignored_dir, create_snapshot_scripts
+
+if TYPE_CHECKING:
+    from . import configs
 
 log = logging.getLogger(__name__)
 
@@ -203,6 +205,8 @@ def _snapshot(config: SnapshotConfig):
 
 
 def snapshot(config: configs.SnapshotConfigInstanceOrDict | None = None, /):
+    from . import configs
+
     if config is None:
         config = SnapshotConfig()
 
