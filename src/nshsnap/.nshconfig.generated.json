@@ -1,0 +1,12 @@
+{
+    "module": "nshsnap",
+    "output": "configs",
+    "typed_dicts": {
+        "nshsnap._config.SnapshotConfig": "configs/_config/SnapshotConfig_typed_dict.py",
+        "nshsnap._meta.SnapshotMetadata": "configs/_snapshot/SnapshotMetadata_typed_dict.py",
+        "nshsnap._pip_deps.EditablePackageDependency": "configs/_config/EditablePackageDependency_typed_dict.py",
+        "nshsnap._pip_deps.RegularPackageDependency": "configs/_pip_deps/RegularPackageDependency_typed_dict.py",
+        "nshsnap._pip_deps.BasePackageDependency": "configs/_pip_deps/BasePackageDependency_typed_dict.py"
+    },
+    "json_schemas": null
+}
