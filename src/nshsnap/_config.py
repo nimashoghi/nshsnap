@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -90,12 +90,15 @@ class SnapshotConfig(C.Config):
 
         return modules
 
-    def set_snapshot_dir_if_missing(self, snapshot_dir: Path | None):
+    def set_snapshot_dir_if_missing(
+        self,
+        snapshot_dir: Callable[[], Path] | Path | None,
+    ):
         if not (self.snapshot_dir is C.MISSING):
             return
-        self.snapshot_dir = (
-            _default_snapshot_dir() if snapshot_dir is None else snapshot_dir
-        )
+        if snapshot_dir is None:
+            snapshot_dir = _default_snapshot_dir
+        self.snapshot_dir = snapshot_dir() if callable(snapshot_dir) else snapshot_dir
 
     def _resolve_snapshot_dir(self):
         if self.snapshot_dir is C.MISSING:
