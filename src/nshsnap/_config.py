@@ -78,8 +78,8 @@ class SnapshotConfig(C.Config):
     on_module_not_found: Literal["raise", "warn"] = "warn"
     """What to do when a module is not found. Default: `"warn"`."""
 
-    editable_modules: bool = False
-    """Snapshot all editable modules. Default: `False`."""
+    editable_modules: bool = True
+    """Snapshot all editable modules. Default: `True`."""
 
     def _resolve_modules(self):
         modules = copy.deepcopy(self.modules)

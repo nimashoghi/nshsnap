@@ -21,7 +21,7 @@ class SnapshotConfigTypedDict(typ.TypedDict, total=False):
     """What to do when a module is not found. Default: `"warn"`."""
 
     editable_modules: bool
-    """Snapshot all editable modules. Default: `False`."""
+    """Snapshot all editable modules. Default: `True`."""
 
 
 @typ.overload
