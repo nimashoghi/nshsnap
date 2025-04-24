@@ -69,7 +69,7 @@ def _merge_modules(*args: Iterable[str]):
 
 
 class SnapshotConfig(C.Config):
-    snapshot_dir: Annotated[Path, C.AllowMissing()] = C.MISSING
+    snapshot_dir: Path | None = None
     """The directory to save snapshots to."""
 
     modules: list[str] = []
@@ -90,17 +90,7 @@ class SnapshotConfig(C.Config):
 
         return modules
 
-    def set_snapshot_dir_if_missing(
-        self,
-        snapshot_dir: Callable[[], Path] | Path | None,
-    ):
-        if not (self.snapshot_dir is C.MISSING):
-            return
-        if snapshot_dir is None:
-            snapshot_dir = _default_snapshot_dir
-        self.snapshot_dir = snapshot_dir() if callable(snapshot_dir) else snapshot_dir
-
     def _resolve_snapshot_dir(self):
-        if self.snapshot_dir is C.MISSING:
+        if self.snapshot_dir is None:
             return _default_snapshot_dir()
         return self.snapshot_dir
