@@ -114,9 +114,9 @@ def _snapshot_modules(
             and len(spec.submodule_search_locations) == 1
         ), f"Could not find module {module} in a single location."
         location = Path(spec.submodule_search_locations[0])
-        assert (
-            location.is_dir()
-        ), f"Module {module} has a non-directory location {location}"
+        assert location.is_dir(), (
+            f"Module {module} has a non-directory location {location}"
+        )
 
         (*parent_modules, module_name) = module.split(".")
 
@@ -162,8 +162,8 @@ def _ensure_supported():
         )
 
 
-def _snapshot_meta(config: SnapshotConfig):
-    meta_dir = config.snapshot_dir / ".nshsnapmeta"
+def _snapshot_meta(config: SnapshotConfig, snapshot_dir: Path):
+    meta_dir = snapshot_dir / ".nshsnapmeta"
     meta_dir.mkdir(exist_ok=True)
 
     # Save the config
@@ -187,21 +187,20 @@ def _snapshot_meta(config: SnapshotConfig):
     (meta_dir / "meta.json").write_text(meta.model_dump_json(indent=4))
 
     # Create the activation and execution scripts
-    script_dir = config.snapshot_dir / ".bin"
+    script_dir = snapshot_dir / ".bin"
     script_dir.mkdir(exist_ok=True)
-    create_snapshot_scripts(config.snapshot_dir, script_dir)
+    create_snapshot_scripts(snapshot_dir, script_dir)
 
 
 def _snapshot(config: SnapshotConfig):
     _ensure_supported()
 
-    _gitignored_dir(config.snapshot_dir)
-    _snapshot_meta(config)
-    return _snapshot_modules(
-        config.snapshot_dir,
-        config._resolve_modules(),
-        config.on_module_not_found,
-    )
+    snapshot_dir = config._resolve_snapshot_dir()
+    modules = config._resolve_modules()
+
+    _gitignored_dir(snapshot_dir)
+    _snapshot_meta(config, snapshot_dir)
+    return _snapshot_modules(snapshot_dir, modules, config.on_module_not_found)
 
 
 def snapshot(config: configs.SnapshotConfigInstanceOrDict | None = None, /):

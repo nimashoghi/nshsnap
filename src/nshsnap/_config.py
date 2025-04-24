@@ -4,7 +4,7 @@ import copy
 import logging
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import nshconfig as C
 from typing_extensions import TypedDict, assert_never
@@ -69,7 +69,7 @@ def _merge_modules(*args: Iterable[str]):
 
 
 class SnapshotConfig(C.Config):
-    snapshot_dir: Path = C.Field(default_factory=_default_snapshot_dir)
+    snapshot_dir: Annotated[Path, C.AllowMissing()] = C.MISSING
     """The directory to save snapshots to."""
 
     modules: list[str] = []
@@ -89,3 +89,15 @@ class SnapshotConfig(C.Config):
             )
 
         return modules
+
+    def set_snapshot_dir_if_missing(self, snapshot_dir: Path | None):
+        if not (self.snapshot_dir is C.MISSING):
+            return
+        self.snapshot_dir = (
+            _default_snapshot_dir() if snapshot_dir is None else snapshot_dir
+        )
+
+    def _resolve_snapshot_dir(self):
+        if self.snapshot_dir is C.MISSING:
+            return _default_snapshot_dir()
+        return self.snapshot_dir
