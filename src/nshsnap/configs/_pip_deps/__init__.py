@@ -4,6 +4,7 @@ __codegen__ = True
 
 from nshsnap._pip_deps import BasePackageDependency as BasePackageDependency
 from nshsnap._pip_deps import EditablePackageDependency as EditablePackageDependency
+from nshsnap._pip_deps import PackageDependency as PackageDependency
 from nshsnap._pip_deps import RegularPackageDependency as RegularPackageDependency
 
 from .BasePackageDependency_typed_dict import (
@@ -50,6 +51,7 @@ __all__ = [
     "EditablePackageDependency",
     "EditablePackageDependencyInstanceOrDict",
     "EditablePackageDependencyTypedDict",
+    "PackageDependency",
     "RegularPackageDependency",
     "RegularPackageDependencyInstanceOrDict",
     "RegularPackageDependencyTypedDict",

@@ -6,6 +6,7 @@ from nshsnap import SnapshotConfig as SnapshotConfig
 from nshsnap._config import EditablePackageDependency as EditablePackageDependency
 from nshsnap._meta import SnapshotMetadata as SnapshotMetadata
 from nshsnap._pip_deps import BasePackageDependency as BasePackageDependency
+from nshsnap._pip_deps import PackageDependency as PackageDependency
 from nshsnap._pip_deps import RegularPackageDependency as RegularPackageDependency
 
 from ._pip_deps.BasePackageDependency_typed_dict import (
@@ -76,6 +77,7 @@ __all__ = [
     "EditablePackageDependency",
     "EditablePackageDependencyInstanceOrDict",
     "EditablePackageDependencyTypedDict",
+    "PackageDependency",
     "RegularPackageDependency",
     "RegularPackageDependencyInstanceOrDict",
     "RegularPackageDependencyTypedDict",

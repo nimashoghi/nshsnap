@@ -30,7 +30,7 @@ class RegularPackageDependency(typ.TypedDict, total=False):
 
 
 class SnapshotConfig(typ.TypedDict, total=False):
-    snapshot_dir: str
+    snapshot_dir: str | None
     """The directory to save snapshots to."""
 
     modules: list[str]
@@ -38,6 +38,9 @@ class SnapshotConfig(typ.TypedDict, total=False):
 
     on_module_not_found: typ.Literal["raise"] | typ.Literal["warn"]
     """What to do when a module is not found. Default: `"warn"`."""
+
+    editable_modules: bool
+    """Snapshot all editable modules. Default: `False`."""
 
 
 # Schema entries
