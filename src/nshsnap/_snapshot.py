@@ -3,10 +3,9 @@ from __future__ import annotations
 import importlib.util
 import logging
 import subprocess
-from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from typing_extensions import assert_never
 
@@ -63,17 +62,42 @@ def _copy(source: Path, location: Path):
     )
 
 
-@dataclass
-class SnapshotInfo:
+@dataclass(frozen=True, slots=True)
+class SnapshotModuleInfo:
+    __nshconfig_config__: ClassVar = {"disable_typed_dict_generation": True}
+
+    name: str
+    """The name of the module."""
+
+    status: Literal["success", "not_found"]
+    """The status of the module."""
+
+    location: Path | None
+    """The location of the module, if found."""
+
+    destination: Path | None
+    """The destination where the module was copied to, if applicable."""
+
+
+@dataclass(frozen=True, slots=True)
+class ActiveSnapshot:
+    __nshconfig_config__: ClassVar = {"disable_typed_dict_generation": True}
+
+    config: SnapshotConfig
+    """The configuration used to create the snapshot."""
+
     snapshot_dir: Path
     """The directory where the snapshot is saved."""
 
-    modules: list[str]
-    """The modules that were snapshot."""
+    module_infos: list[SnapshotModuleInfo]
+    """Information about the modules included in the snapshot."""
 
     @property
-    def metadata_dir(self) -> Path:
-        return self.snapshot_dir / ".nshsnapmeta"
+    def modules(self) -> list[str]:
+        """The list of modules included in the snapshot."""
+        return [
+            module.name for module in self.module_infos if module.status == "success"
+        ]
 
 
 def _snapshot_modules(
@@ -96,7 +120,7 @@ def _snapshot_modules(
     """
     log.critical(f"Snapshotting {modules=} to {snapshot_dir}")
 
-    moved_modules = defaultdict[str, list[tuple[Path, Path]]](list)
+    module_infos: list[SnapshotModuleInfo] = []
     for module in modules:
         if (spec := importlib.util.find_spec(module)) is None:
             msg = f"Module {module} not found"
@@ -105,6 +129,14 @@ def _snapshot_modules(
                     raise ValueError(msg)
                 case "warn":
                     log.warning(msg)
+                    module_infos.append(
+                        SnapshotModuleInfo(
+                            name=module,
+                            status="not_found",
+                            location=None,
+                            destination=None,
+                        )
+                    )
                     continue
                 case _:
                     assert_never(on_module_not_found)
@@ -130,9 +162,16 @@ def _snapshot_modules(
 
         destination = destination / module_name
         log.info(f"Moved {location} to {destination} for {module=}")
-        moved_modules[module].append((location, destination))
+        module_infos.append(
+            SnapshotModuleInfo(
+                name=module,
+                status="success",
+                location=location,
+                destination=destination,
+            )
+        )
 
-    return SnapshotInfo(snapshot_dir.absolute(), modules)
+    return snapshot_dir.absolute(), module_infos
 
 
 def _ensure_supported():
@@ -200,7 +239,11 @@ def _snapshot(config: SnapshotConfig):
 
     _gitignored_dir(snapshot_dir)
     _snapshot_meta(config, snapshot_dir)
-    return _snapshot_modules(snapshot_dir, modules, config.on_module_not_found)
+
+    snapshot_dir, modules = _snapshot_modules(
+        snapshot_dir, modules, config.on_module_not_found
+    )
+    return ActiveSnapshot(config, snapshot_dir, modules)
 
 
 def snapshot(config: configs.SnapshotConfigInstanceOrDict | None = None, /):
