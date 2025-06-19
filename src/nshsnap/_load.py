@@ -107,25 +107,24 @@ class LoadExistingSnapshotContext(contextlib.AbstractContextManager):
         # Check to see if there are existing snapshots
         if existing_snapshots := self._get_snapshot_dirs():
             log.info(f"Existing snapshot directories: {', '.join(existing_snapshots)}")
-            match self.on_existing_snapshot:
-                case "warn_and_overwrite":
-                    log.warning(
-                        f"Other snapshot directories {', '.join(existing_snapshots)} are already active. "
-                        f"Overwriting with {', '.join(snapshot_dir_strs)}"
-                    )
-                case "warn_and_ignore":
-                    log.warning(
-                        f"Other snapshot directories {', '.join(existing_snapshots)} are already active. "
-                        f"Ignoring {', '.join(snapshot_dir_strs)}"
-                    )
-                    return
-                case "raise":
-                    raise RuntimeError(
-                        f"Other snapshot directories {', '.join(existing_snapshots)} are already active. "
-                        f"Cannot load {', '.join(snapshot_dir_strs)}"
-                    )
-                case _:
-                    assert_never(self.on_existing_snapshot)
+            if self.on_existing_snapshot == "warn_and_overwrite":
+                log.warning(
+                    f"Other snapshot directories {', '.join(existing_snapshots)} are already active. "
+                    f"Overwriting with {', '.join(snapshot_dir_strs)}"
+                )
+            elif self.on_existing_snapshot == "warn_and_ignore":
+                log.warning(
+                    f"Other snapshot directories {', '.join(existing_snapshots)} are already active. "
+                    f"Ignoring {', '.join(snapshot_dir_strs)}"
+                )
+                return
+            elif self.on_existing_snapshot == "raise":
+                raise RuntimeError(
+                    f"Other snapshot directories {', '.join(existing_snapshots)} are already active. "
+                    f"Cannot load {', '.join(snapshot_dir_strs)}"
+                )
+            else:
+                assert_never(self.on_existing_snapshot)
 
             # If we made it here, we should overwrite the existing snapshots
             self._unload_snapshots(existing_snapshots, reset_import_cache=False)
@@ -293,13 +292,12 @@ def load_existing_snapshot(
 
     # If there are any errors, handle them according to the `on_error` parameter
     if errors:
-        match on_error:
-            case "warn":
-                log.warning("\n".join(errors))
-            case "raise":
-                raise RuntimeError("\n".join(errors))
-            case _:
-                assert_never(on_error)
+        if on_error == "warn":
+            log.warning("\n".join(errors))
+        elif on_error == "raise":
+            raise RuntimeError("\n".join(errors))
+        else:
+            assert_never(on_error)
 
     # Enter the snapshot context
     return _enter_snapshot(

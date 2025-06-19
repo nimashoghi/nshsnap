@@ -124,22 +124,21 @@ def _snapshot_modules(
     for module in modules:
         if (spec := importlib.util.find_spec(module)) is None:
             msg = f"Module {module} not found"
-            match on_module_not_found:
-                case "raise":
-                    raise ValueError(msg)
-                case "warn":
-                    log.warning(msg)
-                    module_infos.append(
-                        SnapshotModuleInfo(
-                            name=module,
-                            status="not_found",
-                            location=None,
-                            destination=None,
-                        )
+            if on_module_not_found == "raise":
+                raise ValueError(msg)
+            elif on_module_not_found == "warn":
+                log.warning(msg)
+                module_infos.append(
+                    SnapshotModuleInfo(
+                        name=module,
+                        status="not_found",
+                        location=None,
+                        destination=None,
                     )
-                    continue
-                case _:
-                    assert_never(on_module_not_found)
+                )
+                continue
+            else:
+                assert_never(on_module_not_found)
 
         assert (
             spec.submodule_search_locations

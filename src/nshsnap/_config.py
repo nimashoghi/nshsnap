@@ -45,14 +45,13 @@ def _editable_modules(on_module_not_found: Literal["raise", "warn"]):
                 "Delete any existing *.egg-info directories in the package's source directory, "
                 "pip uninstall the package, and then reinstall it."
             )
-            match on_module_not_found:
-                case "raise":
-                    raise ValueError(msg)
-                case "warn":
-                    log.warning(msg)
-                    continue
-                case _:
-                    assert_never(on_module_not_found)
+            if on_module_not_found == "raise":
+                raise ValueError(msg)
+            elif on_module_not_found == "warn":
+                log.warning(msg)
+                continue
+            else:
+                assert_never(on_module_not_found)
 
         yield module_name
 

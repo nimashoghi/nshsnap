@@ -3,7 +3,7 @@ name = "nshsnap"
 version = "0.13.0"
 description = ""
 authors = [{ name = "Nima Shoghi", email = "nimashoghi@gmail.com" }]
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.9,<4.0"
 readme = "README.md"
 
 dependencies = ["nshconfig", "uuid7"]
