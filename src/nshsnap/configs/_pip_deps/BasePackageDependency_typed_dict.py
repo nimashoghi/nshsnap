@@ -10,6 +10,7 @@ __codegen__ = True
 
 
 # Schema entries
+@typ.final
 class BasePackageDependencyTypedDict(typ.TypedDict, total=False):
     name: typ.Required[str]
 

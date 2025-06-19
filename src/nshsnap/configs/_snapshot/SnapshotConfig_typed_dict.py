@@ -10,6 +10,7 @@ __codegen__ = True
 
 
 # Schema entries
+@typ.final
 class SnapshotConfigTypedDict(typ.TypedDict, total=False):
     snapshot_dir: str | None
     """The directory to save snapshots to."""
