@@ -22,6 +22,7 @@ basedpyright = "*"
 ruff = "*"
 ipykernel = "*"
 ipywidgets = "*"
+nox = "*"
 
 [build-system]
 requires = ["poetry-core"]
