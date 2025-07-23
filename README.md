@@ -119,7 +119,7 @@ nshsnap --modules my_project other_module \
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.9+
 - git
 - rsync
 
