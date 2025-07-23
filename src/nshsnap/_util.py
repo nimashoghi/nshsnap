@@ -23,39 +23,67 @@ def gitignored_dir(path: Path, *, create: bool = True) -> Path:
 
 
 def _create_activation_script(snapshot_dir: Path, script_dir: Path):
-    activate_script = script_dir / "activate"
-    script_content = f"""
-#!/bin/bash
-
+    """Create activation scripts for bash, zsh, fish and PowerShell."""
+    # Template strings
+    bash_tpl = f"""#!/usr/bin/env bash
 # Add the snapshot directory to PYTHONPATH
 export PYTHONPATH="{snapshot_dir}:$PYTHONPATH"
 
-# Optionally, you can modify the PS1 to indicate that the snapshot is active
 export OLD_PS1="$PS1"
 export PS1="(snapshot) $PS1"
 
 deactivate() {{
-    # Restore the old PYTHONPATH
     export PYTHONPATH="${{PYTHONPATH#{snapshot_dir}:}}"
-
-    # Restore the old PS1
     export PS1="$OLD_PS1"
     unset OLD_PS1
-
-    # Remove the deactivate function
     unset -f deactivate
 }}
-
 echo "Snapshot environment activated. Use 'deactivate' to exit."
 """
-    activate_script.write_text(script_content)
-    activate_script.chmod(0o755)  # Make the script executable
+
+    # zsh is syntactically compatible with the bash template above
+    zsh_tpl = bash_tpl.replace("/usr/bin/env bash", "/usr/bin/env zsh")
+
+    fish_tpl = f"""#!/usr/bin/env fish
+# Add the snapshot directory to PYTHONPATH
+set -gx PYTHONPATH "{snapshot_dir}:$PYTHONPATH"
+
+function deactivate
+    set -gx PYTHONPATH (string replace -r '^{snapshot_dir}:' '' $PYTHONPATH)
+    functions -e deactivate
+end
+echo "Snapshot environment activated. Use 'deactivate' to exit."
+"""
+
+    ps1_tpl = f"""# PowerShell activation script
+$env:PYTHONPATH = "{snapshot_dir};" + $env:PYTHONPATH
+function global:deactivate {{
+    $env:PYTHONPATH = $env:PYTHONPATH -replace [regex]::Escape("{snapshot_dir};"), ''
+    Remove-Item Function:\\deactivate
+}}
+Write-Host "Snapshot environment activated. Use 'deactivate' to exit."
+"""
+
+    # Script mapping
+    scripts: dict[str, str] = {
+        "activate": bash_tpl,
+        "activate.zsh": zsh_tpl,
+        "activate.fish": fish_tpl,
+        "activate.ps1": ps1_tpl,
+    }
+
+    # Write scripts
+    for name, content in scripts.items():
+        fp = script_dir / name
+        fp.write_text(content)
+        # Make the script executable where it makes sense
+        if not name.endswith(".ps1"):
+            fp.chmod(0o755)
 
 
 def _create_execution_script(snapshot_dir: Path, script_dir: Path):
     execute_script = script_dir / "execute"
-    script_content = f"""
-#!/bin/bash
+    script_content = f"""#!/bin/bash
 
 if [ "$#" -eq 0 ]; then
     echo "Usage: $0 <command> [args...]"
@@ -185,3 +213,17 @@ def restore_git_reference(path: Path, reference: str) -> None:
         stderr = e.stderr.decode() if e.stderr else ""
         log.error(f"Failed to restore git reference '{reference}' in {path}: {stderr}")
         # Don't raise here as this is a cleanup operation
+
+
+def print_snapshot_usage(snapshot_dir: Path) -> None:
+    """
+    Display how to activate the snapshot and run commands inside it for the
+    supported shells.
+    """
+    bin_dir = snapshot_dir / ".bin"
+    print("\nTo activate the snapshot, run:")
+    print(f"  bash/zsh   : source {bin_dir}/activate")
+    print(f"  fish       : source {bin_dir}/activate.fish")
+    print(f"  PowerShell : {bin_dir}\\activate.ps1")
+    print("\nTo execute a command within the snapshot, run:")
+    print(f"  {bin_dir}/execute <command> [args...]")

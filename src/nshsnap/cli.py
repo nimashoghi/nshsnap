@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ._config import SnapshotConfig
 from ._snapshot import snapshot
+from ._util import print_snapshot_usage
 
 
 def main():
@@ -92,10 +93,7 @@ def main():
                 ref = module_info.git_reference_requested
                 print(f"  {module_info.name}: Failed to use git reference '{ref}'")
 
-    print("\nTo activate the snapshot, run:")
-    print(f"source {snapshot_info.snapshot_dir}/activate")
-    print("\nTo execute a command within the snapshot, run:")
-    print(f"{snapshot_info.snapshot_dir}/execute <command> [args...]")
+    print_snapshot_usage(snapshot_info.snapshot_dir)
 
 
 if __name__ == "__main__":
