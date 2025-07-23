@@ -183,7 +183,7 @@ def _snapshot_modules(
     log.critical(f"Snapshotting {modules=} to {snapshot_dir}")
 
     module_infos: list[SnapshotModuleInfo] = []
-    git_restore_info: list[tuple[Path, str]] = []  # (path, original_reference)
+    git_restore_info: dict[Path, str] = {}  # path -> original_reference
 
     try:
         for module in modules:
@@ -225,6 +225,8 @@ def _snapshot_modules(
                     locations[0],
                 )
             location = locations[0]
+            # Normalize the location to ensure unique keys in git_restore_info
+            normalized_location = location.resolve()
 
             git_ref_original = None
             git_ref_used = None
@@ -254,7 +256,9 @@ def _snapshot_modules(
                     git_ref_original = checkout_git_reference(
                         location, git_ref_requested
                     )
-                    git_restore_info.append((location, git_ref_original))
+                    # Only store the original reference if we haven't seen this location before
+                    if normalized_location not in git_restore_info:
+                        git_restore_info[normalized_location] = git_ref_original
                     git_ref_used = git_ref_requested
                     log.info(
                         f"Switched {module} from '{git_ref_original}' to '{git_ref_requested}'"
@@ -299,7 +303,7 @@ def _snapshot_modules(
             )
     finally:
         # Restore all git repositories to their original references
-        for location, original_ref in git_restore_info:
+        for location, original_ref in git_restore_info.items():
             restore_git_reference(location, original_ref)
 
     return snapshot_dir.absolute(), module_infos
