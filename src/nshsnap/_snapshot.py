@@ -12,9 +12,9 @@ from typing_extensions import assert_never
 from ._config import SnapshotConfig
 from ._meta import SnapshotMetadata
 from ._util import (
-    _gitignored_dir,
     checkout_git_reference,
     create_snapshot_scripts,
+    gitignored_dir,
     is_git_repository,
     restore_git_reference,
 )
@@ -319,7 +319,7 @@ def _snapshot(config: SnapshotConfig):
     snapshot_dir = config._resolve_snapshot_dir()
     modules = config._resolve_modules()
 
-    _gitignored_dir(snapshot_dir)
+    gitignored_dir(snapshot_dir)
     _snapshot_meta(config, snapshot_dir)
 
     snapshot_dir, modules = _snapshot_modules(
