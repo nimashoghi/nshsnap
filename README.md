@@ -74,6 +74,27 @@ nshsnap --editables --git-ref my_package:main --git-ref another_package:develop
 nshsnap --help
 ```
 
+### Snapshot and Run Commands
+
+For convenience, nshsnap provides the `nshsnap-run` command that creates a snapshot and immediately runs a command within that environment:
+
+```bash
+# Run a Python module within a snapshot
+nshsnap-run --modules my_project python -m my_project.main
+
+# Run a script with all editable packages
+nshsnap-run --editables python my_script.py
+
+# Run with specific git references
+nshsnap-run --modules my_project --git-ref my_project:v1.2.3 python -m my_project.main
+
+# Run with custom snapshot directory
+nshsnap-run --modules my_project --dir /tmp/my_snapshot python train.py
+
+# Get help
+nshsnap-run --help
+```
+
 ### Activating and Using Snapshots
 
 After creating a snapshot, all you need to do is prepend the snapshot directory to your `PYTHONPATH` to activate the snapshot environment:
@@ -96,6 +117,7 @@ source /path/to/snapshot/.bin/activate
 
 - Snapshot editable packages and specified modules
 - **Git reference support**: Snapshot modules at specific git branches, tags, or commit hashes
+- **Snapshot and run**: Create snapshots and immediately execute commands within them using `nshsnap-run`
 - Preserve exact state of code and dependencies
 - Easy activation and execution within snapshot environments
 - Integration with version control systems (respects .gitignore)

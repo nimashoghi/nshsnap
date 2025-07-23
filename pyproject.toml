@@ -16,6 +16,7 @@ homepage = "https://github.com/nimashoghi/nshsnap"
 
 [project.scripts]
 nshsnap = "nshsnap.cli:main"
+nshsnap-run = "nshsnap.run_cli:main"
 
 [tool.poetry.group.dev.dependencies]
 basedpyright = "*"

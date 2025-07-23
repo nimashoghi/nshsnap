@@ -9,10 +9,7 @@ from ._snapshot import snapshot
 from ._util import print_snapshot_usage
 
 
-def main():
-    logging.basicConfig(level=logging.INFO)
-
-    parser = argparse.ArgumentParser(description="Create a snapshot of a directory")
+def add_parser_arguments(parser: argparse.ArgumentParser):
     parser.add_argument(
         "-e",
         "--editables",
@@ -36,8 +33,13 @@ def main():
         help="Specify git reference for a module (format: module_name:git_reference). "
         "Can be used multiple times. Only works for modules that are git repositories.",
     )
-    args = parser.parse_args()
+    return parser
 
+
+def parsed_args_to_config(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> SnapshotConfig:
     config = SnapshotConfig.draft()
     config.editable_modules = args.editables
     if args.modules:
@@ -62,10 +64,20 @@ def main():
         config.git_references = git_references
 
     config = config.finalize()
+    return config
+
+
+def main():
+    logging.basicConfig(level=logging.INFO)
+    parser = argparse.ArgumentParser(description="Create a snapshot of a directory")
+    parser = add_parser_arguments(parser)
+    args = parser.parse_args()
+
+    config = parsed_args_to_config(args, parser)
     snapshot_info = snapshot(config)
 
-    print(f"Snapshot created at: {snapshot_info.snapshot_dir}")
-    print(f"Modules included: {', '.join(snapshot_info.modules)}")
+    logging.info("Snapshot created at: %s", snapshot_info.snapshot_dir)
+    logging.info("Modules included: %s", ", ".join(snapshot_info.modules))
 
     # Show git reference information
     git_ref_modules = [
@@ -74,9 +86,9 @@ def main():
         if module_info.git_reference_used
     ]
     if git_ref_modules:
-        print("\nGit references used:")
+        logging.info("Git references used:")
         for module_info in git_ref_modules:
-            print(f"  {module_info.name}: {module_info.git_reference_used}")
+            logging.info("  %s: %s", module_info.name, module_info.git_reference_used)
 
     # Show any failures
     failed_modules = [
@@ -85,13 +97,15 @@ def main():
         if module_info.status in ("not_found", "git_reference_failed")
     ]
     if failed_modules:
-        print("\nWarnings/Errors:")
+        logging.warning("Warnings/Errors:")
         for module_info in failed_modules:
             if module_info.status == "not_found":
-                print(f"  {module_info.name}: Module not found")
+                logging.warning("  %s: Module not found", module_info.name)
             elif module_info.status == "git_reference_failed":
                 ref = module_info.git_reference_requested
-                print(f"  {module_info.name}: Failed to use git reference '{ref}'")
+                logging.warning(
+                    "  %s: Failed to use git reference '%s'", module_info.name, ref
+                )
 
     print_snapshot_usage(snapshot_info.snapshot_dir)
 
