@@ -28,6 +28,13 @@ def main():
         required=False,
         help="Custom snapshot directory. If not set, the default is used (~/.cache/nshsnap/snapshots/{tempdir})",
     )
+    parser.add_argument(
+        "--git-ref",
+        action="append",
+        metavar="MODULE:REF",
+        help="Specify git reference for a module (format: module_name:git_reference). "
+        "Can be used multiple times. Only works for modules that are git repositories.",
+    )
     args = parser.parse_args()
 
     config = SnapshotConfig.draft()
@@ -40,11 +47,51 @@ def main():
     if args.dir:
         config.snapshot_dir = args.dir
 
+    # Parse git references
+    if args.git_ref:
+        git_references = {}
+        for git_ref_spec in args.git_ref:
+            if ":" not in git_ref_spec:
+                parser.error(
+                    f"Invalid git reference format '{git_ref_spec}'. "
+                    "Expected format: module_name:git_reference"
+                )
+            module_name, git_ref = git_ref_spec.split(":", 1)
+            git_references[module_name] = git_ref
+        config.git_references = git_references
+
     config = config.finalize()
     snapshot_info = snapshot(config)
 
     print(f"Snapshot created at: {snapshot_info.snapshot_dir}")
     print(f"Modules included: {', '.join(snapshot_info.modules)}")
+
+    # Show git reference information
+    git_ref_modules = [
+        module_info
+        for module_info in snapshot_info.module_infos
+        if module_info.git_reference_used
+    ]
+    if git_ref_modules:
+        print("\nGit references used:")
+        for module_info in git_ref_modules:
+            print(f"  {module_info.name}: {module_info.git_reference_used}")
+
+    # Show any failures
+    failed_modules = [
+        module_info
+        for module_info in snapshot_info.module_infos
+        if module_info.status in ("not_found", "git_reference_failed")
+    ]
+    if failed_modules:
+        print("\nWarnings/Errors:")
+        for module_info in failed_modules:
+            if module_info.status == "not_found":
+                print(f"  {module_info.name}: Module not found")
+            elif module_info.status == "git_reference_failed":
+                ref = module_info.git_reference_requested
+                print(f"  {module_info.name}: Failed to use git reference '{ref}'")
+
     print("\nTo activate the snapshot, run:")
     print(f"source {snapshot_info.snapshot_dir}/activate")
     print("\nTo execute a command within the snapshot, run:")

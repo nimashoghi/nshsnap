@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
+import subprocess
 from pathlib import Path
 
 from uuid_extensions import uuid7str
+
+log = logging.getLogger(__name__)
 
 
 def _gitignored_dir(path: Path, *, create: bool = True) -> Path:
@@ -78,3 +82,106 @@ def create_snapshot_scripts(snapshot_dir: Path, script_dir: Path):
 
 def snapshot_id():
     return uuid7str()
+
+
+def is_git_repository(path: Path) -> bool:
+    """Check if the given path is a git repository."""
+    try:
+        subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "--git-dir"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def get_current_git_reference(path: Path) -> str:
+    """Get the current git reference (branch or commit hash) of the repository."""
+    try:
+        # Try to get the current branch name
+        result = subprocess.run(
+            ["git", "-C", str(path), "symbolic-ref", "--short", "HEAD"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        # If not on a branch, get the commit hash
+        result = subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "HEAD"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        return result.stdout.strip()
+
+
+def checkout_git_reference(path: Path, reference: str) -> str:
+    """
+    Checkout the specified git reference and return the previous reference.
+
+    Args:
+        path: The path to the git repository
+        reference: The git reference to checkout (branch, tag, or commit hash)
+
+    Returns:
+        The previous git reference that was checked out
+
+    Raises:
+        subprocess.CalledProcessError: If the git operation fails
+        ValueError: If the path is not a git repository
+    """
+    if not is_git_repository(path):
+        raise ValueError(f"Path {path} is not a git repository")
+
+    # Get the current reference before switching
+    current_ref = get_current_git_reference(path)
+
+    try:
+        # Checkout the specified reference
+        subprocess.run(
+            ["git", "-C", str(path), "checkout", reference],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        log.info(f"Checked out git reference '{reference}' in {path}")
+        return current_ref
+    except subprocess.CalledProcessError as e:
+        stderr = e.stderr.decode() if e.stderr else ""
+        raise subprocess.CalledProcessError(
+            e.returncode,
+            e.cmd,
+            f"Failed to checkout git reference '{reference}' in {path}: {stderr}",
+        )
+
+
+def restore_git_reference(path: Path, reference: str) -> None:
+    """
+    Restore the git repository to the specified reference.
+
+    Args:
+        path: The path to the git repository
+        reference: The git reference to restore to
+
+    Raises:
+        subprocess.CalledProcessError: If the git operation fails
+    """
+    try:
+        subprocess.run(
+            ["git", "-C", str(path), "checkout", reference],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        log.info(f"Restored git reference '{reference}' in {path}")
+    except subprocess.CalledProcessError as e:
+        stderr = e.stderr.decode() if e.stderr else ""
+        log.error(f"Failed to restore git reference '{reference}' in {path}: {stderr}")
+        # Don't raise here as this is a cleanup operation

@@ -24,6 +24,10 @@ class SnapshotConfigTypedDict(typ.TypedDict, total=False):
     editable_modules: bool
     """Snapshot all editable modules. Default: `True`."""
 
+    git_references: dict[str, str]
+    """Git references (branch, tag, commit hash) to use for specific modules. 
+    Key is the module name, value is the git reference. Default: `{}`."""
+
 
 @typ.overload
 def CreateSnapshotConfig(

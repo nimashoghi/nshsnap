@@ -11,7 +11,13 @@ from typing_extensions import assert_never
 
 from ._config import SnapshotConfig
 from ._meta import SnapshotMetadata
-from ._util import _gitignored_dir, create_snapshot_scripts
+from ._util import (
+    _gitignored_dir,
+    checkout_git_reference,
+    create_snapshot_scripts,
+    is_git_repository,
+    restore_git_reference,
+)
 
 if TYPE_CHECKING:
     from . import configs
@@ -69,7 +75,7 @@ class SnapshotModuleInfo:
     name: str
     """The name of the module."""
 
-    status: Literal["success", "not_found"]
+    status: Literal["success", "not_found", "git_reference_failed"]
     """The status of the module."""
 
     location: Path | None
@@ -77,6 +83,15 @@ class SnapshotModuleInfo:
 
     destination: Path | None
     """The destination where the module was copied to, if applicable."""
+
+    git_reference_requested: str | None = None
+    """The git reference that was requested for this module."""
+
+    git_reference_original: str | None = None
+    """The original git reference before snapshotting."""
+
+    git_reference_used: str | None = None
+    """The git reference that was actually used for snapshotting."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +119,7 @@ def _snapshot_modules(
     snapshot_dir: Path,
     modules: list[str],
     on_module_not_found: Literal["raise", "warn"],
+    git_references: dict[str, str] | None = None,
 ):
     """
     Snapshot the specified modules to the given directory.
@@ -111,64 +127,131 @@ def _snapshot_modules(
     Args:
         snapshot_dir (Path): The directory where the modules will be snapshot.
         modules (Sequence[str]): A sequence of module names to be snapshot.
+        on_module_not_found: What to do when a module is not found.
+        git_references: Optional mapping of module names to git references.
 
     Returns:
         Path: The path to the snapshot directory.
 
     Raises:
         AssertionError: If a module is not found or if a module has a non-directory location.
+        ValueError: If a git reference is specified for a non-git repository.
     """
+    if git_references is None:
+        git_references = {}
+
     log.critical(f"Snapshotting {modules=} to {snapshot_dir}")
 
     module_infos: list[SnapshotModuleInfo] = []
-    for module in modules:
-        if (spec := importlib.util.find_spec(module)) is None:
-            msg = f"Module {module} not found"
-            if on_module_not_found == "raise":
-                raise ValueError(msg)
-            elif on_module_not_found == "warn":
-                log.warning(msg)
-                module_infos.append(
-                    SnapshotModuleInfo(
-                        name=module,
-                        status="not_found",
-                        location=None,
-                        destination=None,
+    git_restore_info: list[tuple[Path, str]] = []  # (path, original_reference)
+
+    try:
+        for module in modules:
+            git_ref_requested = git_references.get(module)
+
+            if (spec := importlib.util.find_spec(module)) is None:
+                msg = f"Module {module} not found"
+                if on_module_not_found == "raise":
+                    raise ValueError(msg)
+                elif on_module_not_found == "warn":
+                    log.warning(msg)
+                    module_infos.append(
+                        SnapshotModuleInfo(
+                            name=module,
+                            status="not_found",
+                            location=None,
+                            destination=None,
+                            git_reference_requested=git_ref_requested,
+                        )
                     )
-                )
-                continue
-            else:
-                assert_never(on_module_not_found)
+                    continue
+                else:
+                    assert_never(on_module_not_found)
 
-        assert (
-            spec.submodule_search_locations
-            and len(spec.submodule_search_locations) == 1
-        ), f"Could not find module {module} in a single location."
-        location = Path(spec.submodule_search_locations[0])
-        assert location.is_dir(), (
-            f"Module {module} has a non-directory location {location}"
-        )
-
-        (*parent_modules, module_name) = module.split(".")
-
-        destination = snapshot_dir
-        for part in parent_modules:
-            destination = destination / part
-            destination.mkdir(parents=True, exist_ok=True)
-            (destination / "__init__.py").touch(exist_ok=True)
-
-        _copy(location, destination)
-
-        destination = destination / module_name
-        log.info(f"Moved {location} to {destination} for {module=}")
-        module_infos.append(
-            SnapshotModuleInfo(
-                name=module,
-                status="success",
-                location=location,
-                destination=destination,
+            assert (
+                spec.submodule_search_locations
+                and len(spec.submodule_search_locations) == 1
+            ), f"Could not find module {module} in a single location."
+            location = Path(spec.submodule_search_locations[0])
+            assert location.is_dir(), (
+                f"Module {module} has a non-directory location {location}"
             )
-        )
+
+            git_ref_original = None
+            git_ref_used = None
+
+            # Handle git reference if specified
+            if git_ref_requested:
+                if not is_git_repository(location):
+                    msg = (
+                        f"Module {module} at {location} is not a git repository, "
+                        f"but git reference '{git_ref_requested}' was specified. "
+                        "Only git repositories support git references."
+                    )
+                    log.error(msg)
+                    module_infos.append(
+                        SnapshotModuleInfo(
+                            name=module,
+                            status="git_reference_failed",
+                            location=location,
+                            destination=None,
+                            git_reference_requested=git_ref_requested,
+                        )
+                    )
+                    continue
+
+                try:
+                    # Get current reference and checkout the requested one
+                    git_ref_original = checkout_git_reference(
+                        location, git_ref_requested
+                    )
+                    git_restore_info.append((location, git_ref_original))
+                    git_ref_used = git_ref_requested
+                    log.info(
+                        f"Switched {module} from '{git_ref_original}' to '{git_ref_requested}'"
+                    )
+                except subprocess.CalledProcessError as e:
+                    msg = f"Failed to checkout git reference '{git_ref_requested}' for module {module}: {e}"
+                    log.error(msg)
+                    module_infos.append(
+                        SnapshotModuleInfo(
+                            name=module,
+                            status="git_reference_failed",
+                            location=location,
+                            destination=None,
+                            git_reference_requested=git_ref_requested,
+                            git_reference_original=git_ref_original,
+                        )
+                    )
+                    continue
+
+            (*parent_modules, module_name) = module.split(".")
+
+            destination = snapshot_dir
+            for part in parent_modules:
+                destination = destination / part
+                destination.mkdir(parents=True, exist_ok=True)
+                (destination / "__init__.py").touch(exist_ok=True)
+
+            _copy(location, destination)
+
+            destination = destination / module_name
+            log.info(f"Moved {location} to {destination} for {module=}")
+            module_infos.append(
+                SnapshotModuleInfo(
+                    name=module,
+                    status="success",
+                    location=location,
+                    destination=destination,
+                    git_reference_requested=git_ref_requested,
+                    git_reference_original=git_ref_original,
+                    git_reference_used=git_ref_used,
+                )
+            )
+    finally:
+        # Restore all git repositories to their original references
+        for location, original_ref in git_restore_info:
+            restore_git_reference(location, original_ref)
 
     return snapshot_dir.absolute(), module_infos
 
@@ -240,7 +323,7 @@ def _snapshot(config: SnapshotConfig):
     _snapshot_meta(config, snapshot_dir)
 
     snapshot_dir, modules = _snapshot_modules(
-        snapshot_dir, modules, config.on_module_not_found
+        snapshot_dir, modules, config.on_module_not_found, config.git_references
     )
     return ActiveSnapshot(config, snapshot_dir, modules)
 

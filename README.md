@@ -38,6 +38,16 @@ snapshot_info = snapshot(
     editable_modules=True
 )
 
+# Create a snapshot with specific git references
+snapshot_info = snapshot(
+    modules=["my_project", "my_other_module"],
+    git_references={
+        "my_project": "v1.2.3",        # Use tag v1.2.3
+        "my_other_module": "main"      # Use main branch
+    },
+    editable_modules=False
+)
+
 print(f"Snapshot created at: {snapshot_info.snapshot_dir}")
 print(f"Modules included: {', '.join(snapshot_info.modules)}")
 ```
@@ -55,6 +65,10 @@ nshsnap --modules my_project my_other_module
 
 # Specify a custom snapshot directory
 nshsnap --editables --dir /path/to/snapshot/directory
+
+# Snapshot modules at specific git references
+nshsnap --modules my_project --git-ref my_project:v1.2.3
+nshsnap --editables --git-ref my_package:main --git-ref another_package:develop
 
 # Get help
 nshsnap --help
@@ -81,10 +95,27 @@ source /path/to/snapshot/.bin/activate
 ## Features
 
 - Snapshot editable packages and specified modules
+- **Git reference support**: Snapshot modules at specific git branches, tags, or commit hashes
 - Preserve exact state of code and dependencies
 - Easy activation and execution within snapshot environments
 - Integration with version control systems (respects .gitignore)
 - Metadata storage for snapshot information
+
+### Git References
+
+nshsnap supports snapshotting modules at specific git references (branches, tags, or commit hashes). This is particularly useful when you want to ensure your snapshot uses a specific version of a dependency:
+
+- **Modules must be git repositories**: The git reference feature only works for modules that are located in git repositories
+- **Automatic restoration**: After snapshotting, the original git reference is automatically restored
+- **Error handling**: If a git reference cannot be checked out, nshsnap will log an error and skip that module
+- **Multiple references**: You can specify different git references for different modules
+
+```bash
+# Example: Snapshot with git references
+nshsnap --modules my_project other_module \
+        --git-ref my_project:v2.1.0 \
+        --git-ref other_module:feature-branch
+```
 
 ## Requirements
 
