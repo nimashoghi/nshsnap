@@ -221,9 +221,15 @@ def print_snapshot_usage(snapshot_dir: Path) -> None:
     supported shells.
     """
     bin_dir = snapshot_dir / ".bin"
+
+    bash_path = bin_dir / "activate"
+    fish_path = bin_dir / "activate.fish"
+    ps1_path = bin_dir / "activate.ps1"
+    execute_path = bin_dir / "execute"
+
     print("\nTo activate the snapshot, run:")
-    print(f"  bash/zsh   : source {bin_dir}/activate")
-    print(f"  fish       : source {bin_dir}/activate.fish")
-    print(f"  PowerShell : {bin_dir}\\activate.ps1")
+    print(f"  bash/zsh   : source {bash_path}")
+    print(f"  fish       : source {fish_path}")
+    print(f"  PowerShell : {ps1_path}")
     print("\nTo execute a command within the snapshot, run:")
-    print(f"  {bin_dir}/execute <command> [args...]")
+    print(f"  {execute_path} <command> [args...]")
