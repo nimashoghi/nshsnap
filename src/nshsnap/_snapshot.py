@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import logging
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
@@ -115,6 +116,45 @@ class ActiveSnapshot:
         ]
 
 
+def _normalize_module_locations(
+    module: str,
+    raw_locations: Iterable[str],
+) -> list[Path]:
+    """
+    Turn the raw ``spec.submodule_search_locations`` into a clean list of
+    directories:
+
+    1. ``Path(entry).resolve()`` to normalise and remove “./” aliases.
+    2. Keep only entries that are real directories (filters editable-install
+       hooks such as “__editable__.pkg-0.0.0.finder.__path_hook__”).
+    3. Remove duplicates while preserving order.
+
+    Returns
+    -------
+    list[Path]
+        Cleaned list of locations.  May be empty if nothing usable is left.
+    """
+    seen: set[Path] = set()
+    locations: list[Path] = []
+
+    for entry in raw_locations:
+        p = Path(entry).expanduser().resolve()
+        if not p.is_dir():
+            continue  # skip non-directory hooks
+        if p in seen:
+            continue  # drop duplicates
+        seen.add(p)
+        locations.append(p)
+
+    if not locations:
+        log.debug(
+            "Module %s had no usable directory locations after normalisation: %s",
+            module,
+            raw_locations,
+        )
+    return locations
+
+
 def _snapshot_modules(
     snapshot_dir: Path,
     modules: list[str],
@@ -168,14 +208,23 @@ def _snapshot_modules(
                 else:
                     assert_never(on_module_not_found)
 
-            assert (
-                spec.submodule_search_locations
-                and len(spec.submodule_search_locations) == 1
-            ), f"Could not find module {module} in a single location."
-            location = Path(spec.submodule_search_locations[0])
-            assert location.is_dir(), (
-                f"Module {module} has a non-directory location {location}"
-            )
+            raw_search_locations = spec.submodule_search_locations or []
+            locations = _normalize_module_locations(module, raw_search_locations)
+            if not locations:
+                raise ValueError(
+                    f"Module {module!r} has no importable directory locations "
+                    f"({raw_search_locations})"
+                )
+
+            if len(locations) > 1:
+                log.warning(
+                    "Module %s is a namespace package with multiple locations: %s. "
+                    "Using the first location %s.",
+                    module,
+                    locations,
+                    locations[0],
+                )
+            location = locations[0]
 
             git_ref_original = None
             git_ref_used = None
